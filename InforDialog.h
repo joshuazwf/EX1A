@@ -10,7 +10,6 @@ class InforDialog : public QWidget
 public:
 	InforDialog(QWidget *parent = Q_NULLPTR);
 	~InforDialog();
-
 public:
 	Ui::InforDialog ui;
 };

@@ -25,7 +25,7 @@ void QtWidgetsApplication1::onTableClicked(const QModelIndex& index) {
     QVariant datatemp = modessl->data(indextemp);
     //QMessageBox::information(this, "Frame", datatemp.toString());
     InforDialog* ide=new InforDialog();
-    ide->ui.setupUi(ide);
-    //ide->ui.textBrowser
+    //ide->ui.setupUi(ide);
+    ide->ui.textBrowser->setText(datatemp.toString());
     ide->show();//这样采用指针的方法不会闪现
 }
