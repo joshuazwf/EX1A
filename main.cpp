@@ -8,6 +8,7 @@
 #include<vector>
 #include<QJsonArray>
 #include<QThread>
+#include<Windows.h>
 
 #pragma execution_character_set("utf-8")
 
@@ -16,30 +17,20 @@ QString g_time, g_source, g_dest, g_length,g_protocol;
 QStandardItemModel* model;
 long long g_number = 0;//防止溢出 因为包的数量是巨大的
 Network_Packet sniffer;
-
-QString find_value(QJsonObject obj,QString key) {
-    QJsonObject::const_iterator it = obj.constBegin();
-    QJsonObject::const_iterator end = obj.constEnd();
-    while (it != end) {
-        if (it.key() == key) {
-            return it.value().toString();
-        }
-        it++;
-    }
-    return "";
-}
+int g_packet_len;
 
 void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-void net6_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-void arp_pck(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-void Transmission_tcp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-QJsonObject Transmission_udp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
-void HTTP_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+std::vector<QString> net4_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+std::vector<QString> net6_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+QString arp_pck(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+std::vector<QString> Transmission_tcp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+QString Transmission_udp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
+QString HTTP_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data);
 
-void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data){
     //获取当前包的时间
-    int pck_len = strlen((char*)pkt_data);
+    //Frame 79: 1294 bytes on wire (10352 bits),
+    //1294 bytes captured (10352 bits) on interface \Device\NPF_{64E89EF2-0BB1-4C7A-B75F-8D6599A35C17}, id 0
     struct tm ltime;
     char timestr[16];
     time_t local_tv_sec;
@@ -52,7 +43,6 @@ void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_
     //对以太网的帧进行分析
     u_short type;
     ethernet_header* E_header = (ethernet_header*)pkt_data;
-    QJsonObject ether=QJsonObject();
     QString first = QString("%1").arg(E_header->src_mac.first, 2, 16, QLatin1Char('0'));
     QString second = QString("%1").arg(E_header->src_mac.second, 2, 16, QLatin1Char('0'));
     QString third = QString("%1").arg(E_header->src_mac.third, 2, 16, QLatin1Char('0'));
@@ -78,46 +68,49 @@ void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_
     if (type == 0x0806) {
         T_type = "arp(0x0806)";
     }
-    ether.insert("pro_type", "Ethernet");
-    ether.insert("Src MAC", src_mac);
-    ether.insert("Dst MAC", dst_mac);
-    ether.insert("Type", T_type);
-    std::vector<QJsonObject> v;
-    v.push_back(ether);
+    QString ether_infor = "Ethernet II,Src:" + src_mac + ", Dst:" + dst_mac
+        + "\n" + "    Type:" + T_type+"\n";
     if (type == 0x0800) {
-        std::vector<QJsonObject> re=net4_layer_handler(param, header, pkt_data + 14);
+        std::vector<QString> re=net4_layer_handler(param, header, pkt_data + 14);
         for (int i = 0;i < re.size();i++) {
-            v.push_back(re[i]);
+            ether_infor += "\n"+re[i];
         }
     }
     else if (type == 0x86DD) {
-        qDebug() << "ipv6";
         net6_layer_handler(param, header, pkt_data + 14);
+        std::vector<QString> re = net6_layer_handler(param, header, pkt_data + 14);
+        for (int i = 0;i < re.size();i++) {
+            ether_infor += "\n" + re[i];
+        }
     }
     else if (type == 0x0806) {
-        qDebug() << "arp";
-        arp_pck(param, header, pkt_data + 14);
+        QString re=arp_pck(param, header, pkt_data + 14);
+        ether_infor +="\n"+ re;
     }
     else {
         //暂时不考虑
     }
     //ip地址一定是在第二层
-    g_source = find_value(v[1], "Src IP");
-    g_dest = find_value(v[1],"DST IP");
     g_time = QString(timestr);
     g_length = QString::number(len);
-    g_protocol=find_value(v[v.size() - 1], "pro_type");
-    model->setItem(g_number, 0, new QStandardItem(g_time));
-    model->setItem(g_number, 1, new QStandardItem(g_source));
-    model->setItem(g_number, 2, new QStandardItem(g_dest));
-    model->setItem(g_number, 3, new QStandardItem(g_protocol));
-    model->setItem(g_number, 4, new QStandardItem(g_length));
-    model->setItem(g_number, 5, new QStandardItem("------"));
-    g_number++;
+    g_packet_len = len;
+    len -= 14;
+    QString physical = g_length+"bytes captured on interface"+QString(sniffer.description)+"\n"+"\n";
+    if (g_number + 1 < 0xffffffff) {
+        model->setItem(g_number, 0, new QStandardItem(g_time));
+        model->setItem(g_number, 1, new QStandardItem(g_source));
+        model->setItem(g_number, 2, new QStandardItem(g_dest));
+        model->setItem(g_number, 3, new QStandardItem(g_protocol));
+        model->setItem(g_number, 4, new QStandardItem(g_length));
+        model->setItem(g_number, 5, new QStandardItem("------"));
+        model->setItem(g_number, 6, new QStandardItem(physical+ether_infor));
+        g_number++;
+    }
+    Sleep(1000);
     qApp->processEvents();
 }
 
-std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+std::vector<QString> net4_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
     IPV4_Header* ip4_header = (IPV4_Header*)pkt_data;
     // ip4长度不定
     /** 1 ICMP * 2 IGMP* 6 TCP* 17 UDP*/
@@ -128,6 +121,7 @@ std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkt
     u_char version = (ip4_header->version_length) & (0xf0); //11110000
     version /= 16;
     u_int ip_len = ((ip4_header->version_length) & 0xf) * 4;
+    g_packet_len -= ip_len;
     u_char tos = ntohs(ip4_header->type_of_service);
     u_short t_len = ntohs(ip4_header->total_len);
     u_short identifier = ntohs(ip4_header->identifier);
@@ -136,23 +130,12 @@ std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkt
     u_char ttl=ip4_header->TTL;
     u_char protocol = (ip4_header->protocol);
     u_short check_sum = ntohs(ip4_header->header_sum);
-    QJsonObject obj;
-    obj.insert("pro_type", "ipv4");
-    obj.insert("Version", (int)version);
-    obj.insert("Header Length", QString::number(ip_len)+" bytes");
     QString toss= QString("%1").arg(tos, 2, 16, QLatin1Char('0'));
-    obj.insert("Type of Service", "0x"+toss);
-    obj.insert("Total Length",t_len);
     QString iden = QString("%1").arg(identifier, 2, 16, QLatin1Char('0'));
-    obj.insert("Identification","0x"+iden);
-    //flags转换为二进制显示
     QString b = QString("%1").arg(flags, 16, 2, QLatin1Char('0'));//转为2进制  16位填充
     QString flag = b.left(3);
-    obj.insert("flags[ReservedBit,Don't Fragment,More Fragment]", flag);
     QString f= QString("%1").arg(fragment, 16, 2, QLatin1Char('0'));
     QString frag = f.right(13);
-    obj.insert("Fragment", frag);
-    obj.insert("Time to Live", ttl);
     QString pro;
     if (protocol == 6)
         pro = "tcp(6)";
@@ -160,18 +143,26 @@ std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkt
         pro = "udp(17)";
     if (protocol == 1)
         pro = "icmp(1)";
-    obj.insert("Protocol",pro);
     QString sum = QString("%1").arg(check_sum, 2, 16, QLatin1Char('0'));
-    obj.insert("Check Sum", "0x"+sum);
-    obj.insert("Src IP", src_ip);
-    obj.insert("DST IP", dst_ip);
-    std::vector<QJsonObject> res;
-    res.push_back(obj);
+    std::vector<QString> res;
+    //Internet Protocol Version 4, Src: 192.168.43.184, Dst: 40.77.226.250
+    g_source = src_ip;
+    g_dest = dst_ip;
+    g_protocol = "ipv4";
+    QString Ip4_infor = "Internet Protocol Version 4, Src:" + src_ip + ", Dst:" + dst_ip + "\n" +
+        "    Version:"+ QString::number(version)+ "\n"+"    Header Length:"+ QString::number(ip_len) + " bytes"+"\n"
+        + "    Type of Service:"+"0x" + toss+"\n"+ "    Total Length:"+ QString::number(t_len)+"\n"+
+        "    Identification:"+"0x" + iden+"\n"+ "    flags[ReservedBit,Don't Fragment,More Fragment]:"+flag+"\n"+
+        "    Fragment:"+frag+"\n"+ "    Time to Live:"+ QString::number(ttl)+"\n"+ "    Protocol:"+pro +"\n    Check Sum:"+"0x" + sum+"\n";
+    //ipv4字符串
+    res.push_back(Ip4_infor);
     if (protocol == 6) {
-        Transmission_tcp_handler(param, header, pkt_data + ip_len);
+        std::vector<QString> s=Transmission_tcp_handler(param, header, pkt_data + ip_len);
+        for (int i=0;i<s.size();i++)
+            res.push_back(s[i]);
     }
     else if (protocol == 17) {
-        QJsonObject re=Transmission_udp_handler(param, header, pkt_data + ip_len);
+        QString re=Transmission_udp_handler(param, header, pkt_data + ip_len);
         res.push_back(re);
     }
     else if (protocol == 1) {
@@ -183,97 +174,160 @@ std::vector<QJsonObject> net4_layer_handler(u_char* param, const struct pcap_pkt
     return res;
 }
 
-void net6_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+std::vector<QString> net6_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
     IPV6_Header* ip6_header = (IPV6_Header*)pkt_data;
-    qDebug("%x:%x:%x:%x:%x:%x:%x:%x", ip6_header->src_ip.first, ip6_header->src_ip.second, ip6_header->src_ip.third, 
-        ip6_header->src_ip.fourth, ip6_header->src_ip.five
-        ,ip6_header->src_ip.six, ip6_header->src_ip.second, ip6_header->src_ip.eight);
-
-    qDebug("%x:%x:%x:%x:%x:%x:%x:%x", ip6_header->dst_ip.first, ip6_header->dst_ip.second, ip6_header->dst_ip.third,
-        ip6_header->dst_ip.fourth, ip6_header->dst_ip.five
-        , ip6_header->dst_ip.six, ip6_header->dst_ip.second, ip6_header->dst_ip.eight);
-    qDebug()<<"limit="<<ip6_header->limit;
+    QString s1 = QString("%1").arg(ip6_header->src_ip.first, 4, 16, QLatin1Char('0'));
+    QString s2 = QString("%1").arg(ip6_header->src_ip.second, 4, 16, QLatin1Char('0'));
+    QString s3 = QString("%1").arg(ip6_header->src_ip.third, 4, 16, QLatin1Char('0'));
+    QString s4 = QString("%1").arg(ip6_header->src_ip.fourth, 4, 16, QLatin1Char('0'));
+    QString s5 = QString("%1").arg(ip6_header->src_ip.five, 4, 16, QLatin1Char('0'));
+    QString s6 = QString("%1").arg(ip6_header->src_ip.six, 4, 16, QLatin1Char('0'));
+    QString s7 = QString("%1").arg(ip6_header->src_ip.seven, 4, 16, QLatin1Char('0'));
+    QString s8 = QString("%1").arg(ip6_header->src_ip.eight, 4, 16, QLatin1Char('0'));
+    QString d1 = QString("%1").arg(ip6_header->dst_ip.first, 4, 16, QLatin1Char('0'));
+    QString d2 = QString("%1").arg(ip6_header->dst_ip.second, 4, 16, QLatin1Char('0'));
+    QString d3 = QString("%1").arg(ip6_header->dst_ip.third, 4, 16, QLatin1Char('0'));
+    QString d4 = QString("%1").arg(ip6_header->dst_ip.fourth, 4, 16, QLatin1Char('0'));
+    QString d5 = QString("%1").arg(ip6_header->dst_ip.five, 4, 16, QLatin1Char('0'));
+    QString d6 = QString("%1").arg(ip6_header->dst_ip.six, 4, 16, QLatin1Char('0'));
+    QString d7 = QString("%1").arg(ip6_header->dst_ip.seven, 4, 16, QLatin1Char('0'));
+    QString d8 = QString("%1").arg(ip6_header->dst_ip.eight, 4, 16, QLatin1Char('0'));
+    QString src6_ip = s1 + ":" + s2 + ":" + s3 + ":" + s4 + ":" + s5 + ":" + s6 + ":" + s7 + ":" + s8;
+    QString dst6_ip = d1 + ":" + d2 + ":" + d3 + ":" + d4 + ":" + d5 + ":" + d6 + ":" + d7 + ":" + d8;
+    g_source = src6_ip;
+    g_dest = dst6_ip;
+    g_protocol = "ipv6";
+    g_packet_len -= 40;
+    QString b = QString("%1").arg(ntohs(ip6_header->ver_flow_label), 32, 2, QLatin1Char('0'));//转为2进制  16位填充
+    QString traffic_class = b.right(28).left(8);
+    QString DFS = b.right(28).left(6);
+    QString ECN = b.right(22).left(2);
+    QString flow = QString("%1").arg(ntohs(ip6_header->ver_flow_label) & (0x000fffff), 5, 16, QLatin1Char('0'));
+    QString pro;
+    if (ip6_header->next == 6)
+        pro = "tcp(6)";
+    if (ip6_header->next == 17)
+        pro = "udp(17)";
+    if (ip6_header->next == 1)
+        pro = "icmp(1)";
+    std::vector<QString> v;
+    QString ip6_infor = "Internet Protocol Version 6, Src:" + src6_ip + ", Dst: " + dst6_ip+"\n"+
+        "    Version:6"+"\n"+"    Traffic Class:"+traffic_class+"\n"+"    Differentiated Services Codepoint : "+DFS+"\n"+
+        "    Explicit Congestion Notification:"+ ECN+"\n"+"    Flow Label:0x"+
+        flow+"\n"+"    PayLoad Length:"+ QString::number(ip6_header->data_len)+"\n"+"    Next Header:"+pro+"\n"+"    Hop Limit:"
+        +QString::number(ip6_header->limit)+"\n";
+    v.push_back(ip6_infor);
     if (ip6_header->next == 6) {
         qDebug() << "tcp";
-        Transmission_tcp_handler(param, header, pkt_data + 40);
+        std::vector<QString> tcp_r=Transmission_tcp_handler(param, header, pkt_data + 40);
+        for (int i=0;i<tcp_r.size();i++)
+            v.push_back(tcp_r[i]);
     }
     if (ip6_header->next == 17) {
         qDebug() << "udp";
-        Transmission_udp_handler(param, header, pkt_data + 40);
+        QString re=Transmission_udp_handler(param, header, pkt_data + 40);
+        v.push_back(re);
     }
     if (ip6_header->next == 1) {
        // icmp_handler(param, header, pkt_data + 40);
     }
+    return v;
 }
 
 
-void arp_pck(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+QString arp_pck(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+    g_protocol = "ARP";
     ARP* arp_h = (ARP*)pkt_data;
-
-    qDebug("type=%d", ntohs(arp_h->hard_type));
-    qDebug("%d.%d.%d.%d -> %d.%d.%d.%d\n",
-        arp_h->src_ip.fisrt,
-        arp_h->src_ip.second,
-        arp_h->src_ip.third,
-        arp_h->src_ip.fourth,
-        arp_h->dst_ip.fisrt,
-        arp_h->dst_ip.second,
-        arp_h->dst_ip.third,
-        arp_h->dst_ip.fourth
-    );
-    qDebug("%x:%x:%x:%x:%x:%x", arp_h->src_mac.first, arp_h->src_mac.second, arp_h->src_mac.third, arp_h->src_mac.four,
-        arp_h->src_mac.five, arp_h->src_mac.six);
-    qDebug("%x:%x:%x:%x:%x:%x", arp_h->dst_mac.first, arp_h->dst_mac.second, arp_h->dst_mac.third, arp_h->dst_mac.four,
-        arp_h->dst_mac.five, arp_h->dst_mac.six);
+    QString arp_t = QString::number(ntohs(arp_h->hard_type));
+    QString pro_t = QString::number(ntohs(arp_h->pro_type));
+    QString hard_s = QString::number(ntohs(arp_h->hard_len));
+    QString pro_s = QString::number(ntohs(arp_h->pro_len));
+    QString op_c = QString::number(ntohs(arp_h->op_type));
+    QString first = QString("%1").arg(arp_h->src_mac.first, 2, 16, QLatin1Char('0'));
+    QString second = QString("%1").arg(arp_h->src_mac.second, 2, 16, QLatin1Char('0'));
+    QString third = QString("%1").arg(arp_h->src_mac.third, 2, 16, QLatin1Char('0'));
+    QString four = QString("%1").arg(arp_h->src_mac.four, 2, 16, QLatin1Char('0'));
+    QString five = QString("%1").arg(arp_h->src_mac.five, 2, 16, QLatin1Char('0'));
+    QString six = QString("%1").arg(arp_h->src_mac.six, 2, 16, QLatin1Char('0'));
+    QString first_1 = QString("%1").arg(arp_h->dst_mac.first, 2, 16, QLatin1Char('0'));
+    QString second_1 = QString("%1").arg(arp_h->dst_mac.second, 2, 16, QLatin1Char('0'));
+    QString third_1 = QString("%1").arg(arp_h->dst_mac.third, 2, 16, QLatin1Char('0'));
+    QString four_1 = QString("%1").arg(arp_h->dst_mac.four, 2, 16, QLatin1Char('0'));
+    QString five_1 = QString("%1").arg(arp_h->dst_mac.five, 2, 16, QLatin1Char('0'));
+    QString six_1 = QString("%1").arg(arp_h->dst_mac.six, 2, 16, QLatin1Char('0'));
+    QString src_mac = first + ":" + second + ":" + third + ":" + four + ":" + five + ":" + six;
+    QString dst_mac = first_1 + ":" + second_1 + ":" + third_1 + ":" + four_1 + ":" + five_1 + ":" + six_1;
+    QString src_ip = QString::number(arp_h->src_ip.fisrt) + "." + QString::number(arp_h->src_ip.second)
+        + "." + QString::number(arp_h->src_ip.third) + "." + QString::number(arp_h->src_ip.fourth);
+    QString dst_ip = QString::number(arp_h->dst_ip.fisrt) + "." + QString::number(arp_h->dst_ip.second)
+        + "." + QString::number(arp_h->dst_ip.third) + "." + QString::number(arp_h->dst_ip.fourth);
+    g_source = src_ip;
+    g_dest = dst_ip;
+    QString arp_infor = "Address Resolution Protocol\n";
+    arp_infor += "    Hardware Type:" + arp_t + "\n"+"    Protocol Type:"+ pro_t+"\n"+
+        "    HardwWare Size:"+hard_s+"\n"+"    Protocol Size:"+ pro_s+"\n"+"    Opcode:"+op_c+"\n"+"    Sender Mac Address:"+
+        src_mac+"\n"+"    Sender IP Address:"+src_ip+"\n"+"    Receiver Mac Address: "+dst_mac+"\n"+
+        "    Receiver IP Address:"+dst_ip+"\n";
     //得到ARP的各个字段
+    return arp_infor;
 }
 
-void Transmission_tcp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+std::vector<QString> Transmission_tcp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+    g_protocol = "TCP";
     TCP_header* tcp_header = (TCP_header*)pkt_data;
+    QString ack = QString::number(ntohs(tcp_header->ack));
+    QString seq = QString::number(ntohs(tcp_header->seq));
     //获得端口号
     u_short dst_port = ntohs(tcp_header->dst_port);
+    QString s_dst_port = QString::number(dst_port);
     u_short src_port = ntohs(tcp_header->src_port);
-    u_short head_len = (ntohs(tcp_header->len_keep_flag)) & 0xf0000;
-
-    qDebug("dst_port=%d", dst_port);
-    qDebug("src_port=%d", src_port);
-    qDebug("seq=%d", ntohs(tcp_header->seq));
-    qDebug("ack=%d", ntohs(tcp_header->ack));
-
-    qDebug("winsize=%d", ntohs(tcp_header->win_size));
-
+    QString s_src_port = QString::number(src_port);
+    u_short head_len = (ntohs(tcp_header->len_keep_flag)) & 0xf000;
+    head_len=head_len >> 12;
+    QString s_head_len = QString::number(head_len);
+    QString win_size = QString::number(ntohs(tcp_header->win_size));
+    QString d1 = "0x"+QString("%1").arg(ntohs(tcp_header->check_sum), 4, 16, QLatin1Char('0'));
+    QString urgent = QString::number(ntohs(tcp_header->urgency));
+    u_short flag= (ntohs(tcp_header->len_keep_flag)) & 0x0fff;
+    QString s_falg = QString::number(flag);
+    std::vector<QString> v;
+    //Transmission Control Protocol, Src Port: 80, Dst Port: 53565, Seq: 1, Ack: 404, Len: 90
+    QString tcp_infor = "Transmission Control Protocol, Src Port: " + s_src_port + " Dst Port:" + s_dst_port + ", Seq:" + seq + ",ACK:" + ack ;
     //HTTP 应用层协议
+    v.push_back(tcp_infor);
     if (dst_port == 80 || src_port == 80) {
-        //HTTP_layer_handler(param, header, pkt_data + head_len);
+        QString http=HTTP_layer_handler(param, header, pkt_data + head_len);
     }
     //TLS/SSL协议 端口为443
     if (dst_port == 443 || src_port == 443) {
 
     }
+    return v;
 }
 
-QJsonObject Transmission_udp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+QString Transmission_udp_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
     UDP_Header* udp_header = (UDP_Header*)pkt_data;
     //之后可以加上DNS的操作  53端口
-    qDebug("dst_port=%d", ntohs(udp_header->dst_port));
-    qDebug("len=%d", ntohs(udp_header->length));
-
+    g_protocol = "udp";
     QString src_port = QString::number(ntohs(udp_header->src_port));
     QString dst_port = QString::number(ntohs(udp_header->dst_port));
     QString length = QString::number(ntohs(udp_header->length));
     QString sum = QString("%1").arg(ntohs(udp_header->check_sum), 2, 16, QLatin1Char('0'));
+    QString udp_infor;
+    //User Datagram Protocol, Src Port: 5353, Dst Port: 5353
+    udp_infor = "User Datagram Protocol, Src Port:" + src_port + ", Dst Port: " + dst_port+
+        "\n"+"    Source Port:"+src_port+"\n"
+        +"    Destination Port:"+dst_port+"\n"
+        +"    Check Sum:0x"+sum+"\n";
     //不考虑udp上层的其他协议
-    QJsonObject obj;
-    obj.insert("pro_type","udp");
-    obj.insert("Src Port", src_port);
-    obj.insert("Dst Port", dst_port);
-    obj.insert("Length", length);
-    obj.insert("CheckSum", sum);
-    return obj;
+    return udp_infor;
 }
 
-void HTTP_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+QString HTTP_layer_handler(u_char* param, const struct pcap_pkthdr* header, const u_char* pkt_data) {
+    g_protocol = "HTTP";
     //从pkt_data开始就是HTTP的相关信息了 直接输出即可
+    QString re = QString((char*)pkt_data);
+    return re;
 }
 
 class MyThread :public QThread
@@ -296,13 +350,16 @@ int main(int argc, char* argv[]){
     model = new QStandardItemModel(&w);
     //界面显示
     QStringList strHeader;
-    strHeader<< "Time"<< "Source"<< "DEST"<< "Protocol" << "Length"<<"Info";
+    strHeader<< "Time"<< "Source"<< "DEST"<< "Protocol" << "Length"<<"Info"<<"More";
     model->setHorizontalHeaderLabels(strHeader);
     w.ui.tableView->setModel(model);
+    //w.ui.tableView->hideColumn(6);
     w.ui.tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     w.ui.tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);//当前的数据不能被编辑
+    w.ui.tableView->setColumnWidth(1,250);
+    w.ui.tableView->setColumnWidth(2, 250);
     w.show();
-    char filter[] = "ip and udp";
+    char filter[] = "udp or tcp or arp or http";
     sniffer = Network_Packet(filter);
     sniffer.getInterfaces();
     if (sniffer.dev_num == 4)

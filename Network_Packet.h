@@ -1,6 +1,5 @@
 #pragma once
 #include "pcap.h"
-
 //可以使用计数器对每一种类型的包进行统计
 class Network_Packet
 {
@@ -10,6 +9,7 @@ public:
 	int dev_num;
 	char *filter;
 	Network_Packet(char* filter=NULL);
+	char* description;
 	void getInterfaces();
 	void choose_inter(int choice);
 };
@@ -100,7 +100,7 @@ class ARP {
 public:
 	u_short hard_type;
 	u_short pro_type;
-	u_char add_len;
+	u_char hard_len;
 	u_char pro_len;
 	u_short op_type;
 	ether_add src_mac;

@@ -28,7 +28,9 @@ void Network_Packet::choose_inter(int choice) {
 	int i = 0;
 	//根据用户的输入，通过指针进行找寻到当前网卡
 	//Realtek PCIe GbE Family Controller
-	for (d = alldevs, i = 0;i < choice;i++, d = d->next);
+	for (d = alldevs, i = 0;i < choice;i++, d = d->next) {
+		description = d->description;
+	}
 	/* d->name to hand to "pcap_open_live()" */
 	/*值65535应该足以捕获数据包中可用的所有数据*/
 	/*将该设备设置到混杂模式，用于监听*/
@@ -55,8 +57,10 @@ void Network_Packet::choose_inter(int choice) {
 	//Structure for "pcap_compile()", "pcap_setfilter()", etc..
 	struct bpf_program fcode;
 	int res_compile = pcap_compile(handler, &fcode, filter, 1, netmask);
+
 	if (res_compile < 0) {
 		pcap_freealldevs(alldevs);
+		exit(-1);
 	}
 	if (pcap_setfilter(handler, &fcode) < 0) {
 		pcap_freealldevs(alldevs);

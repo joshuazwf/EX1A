@@ -19,13 +19,14 @@ QtWidgetsApplication1::QtWidgetsApplication1(QWidget *parent)
 }
 
 void QtWidgetsApplication1::onTableClicked(const QModelIndex& index) {
+    //存在溢出的可能
     int cur_index = ui.tableView->currentIndex().row();
     QAbstractItemModel* modessl = ui.tableView->model();
-    QModelIndex indextemp = modessl->index(cur_index,1);
+    QModelIndex indextemp = modessl->index(cur_index,6);
     QVariant datatemp = modessl->data(indextemp);
-    //QMessageBox::information(this, "Frame", datatemp.toString());
-    InforDialog* ide=new InforDialog();
-    //ide->ui.setupUi(ide);
+    
+    InforDialog* ide = new InforDialog();
     ide->ui.textBrowser->setText(datatemp.toString());
+    //ide->ui.textBrowser->setText("ssdddddddddddddd");
     ide->show();//这样采用指针的方法不会闪现
 }

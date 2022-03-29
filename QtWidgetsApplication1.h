@@ -10,6 +10,7 @@ public:
     QtWidgetsApplication1(QWidget *parent = Q_NULLPTR);
 public:
     Ui::QtWidgetsApplication1Class ui;
+    static QString infor;
 private slots:
      void onTableClicked(const QModelIndex& index);
 };
