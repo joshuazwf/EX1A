@@ -46,6 +46,9 @@
     <ClCompile Include="InforDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MainDialogClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Network_Packet.h">
@@ -56,9 +59,15 @@
     <QtUic Include="InforDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="MainDialogClass.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="InforDialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="MainDialogClass.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

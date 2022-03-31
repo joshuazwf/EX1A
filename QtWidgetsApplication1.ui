@@ -6,47 +6,42 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1095</width>
-    <height>610</height>
+    <width>1230</width>
+    <height>790</height>
    </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>楷体</family>
+   </font>
   </property>
   <property name="windowTitle">
    <string>QtWidgetsApplication1</string>
+  </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
   </property>
   <widget class="QWidget" name="centralWidget">
    <widget class="QLineEdit" name="lineEdit">
     <property name="geometry">
      <rect>
-      <x>100</x>
-      <y>10</y>
-      <width>113</width>
-      <height>25</height>
+      <x>700</x>
+      <y>20</y>
+      <width>231</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="placeholderText">
-     <string>Source ip:</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="lineEdit_2">
-    <property name="geometry">
-     <rect>
-      <x>260</x>
-      <y>10</y>
-      <width>113</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="placeholderText">
-     <string>DEST IP:</string>
+     <string>请输入过滤语句:</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton">
     <property name="geometry">
      <rect>
-      <x>590</x>
-      <y>10</y>
-      <width>93</width>
-      <height>29</height>
+      <x>950</x>
+      <y>20</y>
+      <width>121</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="text">
@@ -56,10 +51,10 @@
    <widget class="QPushButton" name="pushButton_2">
     <property name="geometry">
      <rect>
-      <x>710</x>
-      <y>10</y>
-      <width>93</width>
-      <height>29</height>
+      <x>1100</x>
+      <y>20</y>
+      <width>121</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="text">
@@ -69,23 +64,29 @@
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>10</y>
-      <width>69</width>
-      <height>21</height>
+      <x>570</x>
+      <y>30</y>
+      <width>131</width>
+      <height>31</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>楷体</family>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>过滤：</string>
+     <string>      过滤：</string>
     </property>
    </widget>
    <widget class="QTableView" name="tableView">
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>40</y>
-      <width>1101</width>
-      <height>641</height>
+      <y>100</y>
+      <width>1231</width>
+      <height>631</height>
      </rect>
     </property>
     <property name="font">
@@ -93,6 +94,58 @@
       <family>Times New Roman</family>
       <pointsize>10</pointsize>
      </font>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="comboBox">
+    <property name="geometry">
+     <rect>
+      <x>370</x>
+      <y>20</y>
+      <width>221</width>
+      <height>41</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>30</y>
+      <width>121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>楷体</family>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="layoutDirection">
+     <enum>Qt::RightToLeft</enum>
+    </property>
+    <property name="text">
+     <string>网卡选择：</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_3">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>10</y>
+      <width>261</width>
+      <height>81</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ink Free</family>
+      <pointsize>24</pointsize>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="text">
+     <string>WELCOME!</string>
     </property>
    </widget>
   </widget>
@@ -110,8 +163,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1095</width>
-     <height>26</height>
+     <width>1230</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

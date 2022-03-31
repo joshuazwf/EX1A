@@ -97,15 +97,18 @@
   <ItemGroup>
     <QtRcc Include="QtWidgetsApplication1.qrc" />
     <QtUic Include="InforDialog.ui" />
+    <QtUic Include="MainDialogClass.ui" />
     <QtUic Include="QtWidgetsApplication1.ui" />
     <QtMoc Include="QtWidgetsApplication1.h" />
     <ClCompile Include="InforDialog.cpp" />
+    <ClCompile Include="MainDialogClass.cpp" />
     <ClCompile Include="Network_Packet.cpp" />
     <ClCompile Include="QtWidgetsApplication1.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="InforDialog.h" />
+    <QtMoc Include="MainDialogClass.h" />
     <ClInclude Include="Network_Packet.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
