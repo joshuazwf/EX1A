@@ -19,7 +19,10 @@ void Network_Packet::getInterfaces() {
 }
 
 void Network_Packet::choose_inter(int choice) {
-	choice = 2;//本机是二号网卡有包
+	if (dev_num==4)
+		choice = 2;//本机是二号网卡有包
+	if (dev_num == 5)
+		choice = 3;
 	if (choice<1 || choice>dev_num) {
 		pcap_freealldevs(alldevs);
 	}

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1283</width>
+    <width>1483</width>
     <height>728</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <rect>
      <x>0</x>
      <y>10</y>
-     <width>831</width>
+     <width>741</width>
      <height>711</height>
     </rect>
    </property>
@@ -33,10 +33,27 @@
   <widget class="QTextBrowser" name="textBrowser_2">
    <property name="geometry">
     <rect>
-     <x>835</x>
+     <x>750</x>
      <y>10</y>
-     <width>451</width>
-     <height>721</height>
+     <width>731</width>
+     <height>341</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Times New Roman</family>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+  </widget>
+  <widget class="QTextBrowser" name="textBrowser_3">
+   <property name="geometry">
+    <rect>
+     <x>750</x>
+     <y>361</y>
+     <width>721</width>
+     <height>361</height>
     </rect>
    </property>
    <property name="font">
