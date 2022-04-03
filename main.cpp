@@ -125,8 +125,7 @@ void data_link_handler(u_char* param, const struct pcap_pkthdr* header, const u_
     model->setItem(g_number, 4, new QStandardItem(g_length));
     model->setItem(g_number, 5, new QStandardItem("ALL DATA:\n\n" + g_pkt_str));
     model->setItem(g_number, 6, new QStandardItem(physical + ether_infor));
-    if (g_number >= 20)
-    {
+    if (g_number >= 20){
         for (int i = 0;i < 10;i++) {
             model->removeRow(i);
         }
@@ -331,7 +330,7 @@ std::vector<QString> Transmission_tcp_handler(u_char* param, const struct pcap_p
 
     //此时减去每一层的长度之后，那么如果依然存在数据包的长度时，则可以判断存在应用层的数据;e否则，就是TCP报文的SYN/FIN
     //HTTP 应用层协议
-    v.push_back(tcp_infor);
+    v.push_back(tcp_infor+"\n");
     if (g_packet_len - head_len<=0)
         return v;
     if (dst_port == 80 || src_port == 80) {
@@ -355,7 +354,8 @@ std::vector<QString> Transmission_tcp_handler(u_char* param, const struct pcap_p
             g_protocol = "HTTP";
             http_s = QString(buf);
         }
-        v.push_back(http_s);
+        http_s = "Hyper Text Transfer Protocol\n" + http_s;
+        v.push_back(QString(http_s.unicode()));
     }
     //TLS/SSL协议 端口为443
     if (dst_port == 443 || src_port == 443) {
@@ -480,8 +480,7 @@ int main(int argc, char* argv[]) {
     main_d->show();
     w.show(); 
     QFuture<void> future = QtConcurrent::run(function_needmoretime,main_d);
-    while (!future.isFinished())
-    {
+    while (!future.isFinished()){
         QApplication::processEvents();
     } 
     a.exec();

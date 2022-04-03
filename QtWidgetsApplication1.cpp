@@ -25,7 +25,8 @@ QtWidgetsApplication1::QtWidgetsApplication1(QWidget *parent)
    
         });
     */
-    connect(ui.tableView, SIGNAL(doubleClicked(const QModelIndex&)), this,SLOT(onTableClicked(const QModelIndex&)));
+    connect(ui.tableView, SIGNAL(doubleClicked(const QModelIndex&)), this,
+        SLOT(onTableClicked(const QModelIndex&)));
     //connect(ui.tableView->verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(acceptVScrollValueChanged(int)));
 }
 
@@ -50,9 +51,7 @@ void QtWidgetsApplication1::onTableClicked(const QModelIndex& index) {
     if (datatemp2.toString() == "TCP"|| datatemp2.toString() == "TLS"|| datatemp2.toString() == "HTTP") {
         QString res;
         int cnt = 0;
-        qDebug() << "TCP" << "123";
         for (int i = 0;i < v.size();i++) {
-            qDebug() << "TCP" << "123";
             if (v[i].ip_src == src && v[i].dst_ip == dst || v[i].ip_src == dst && v[i].dst_ip == src) {
                 cnt++;
                 res +="Time:"+ v[i].time +  "    IP_SRC:"+v[i].ip_src  + "    DST_IP:"+v[i].dst_ip  + "    Length:"+v[i].Length  +"     ProtoType:"+v[i].protocol+"\n\n";
